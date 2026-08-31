@@ -1,5 +1,7 @@
 # sdxl-forge-api-automation
 
+![生成例（SDXL・日本庭園に立つ女性）](docs/cover.png)
+
 Stable Diffusion XL（SDXL）の画像生成を、WebUI Forge の画面を開かずにコマンド1本で動かすプログラム。RunPod 上の WebUI Forge API（`/sdapi/v1/txt2img`）を対象に、11ステップに分けて段階的に作っている。
 
 各ステップの解説記事（Zenn）: [SDXLをAPIで動かす（1）4つのファイルと、送信前の4つの確認](https://zenn.dev/triponte/articles/sdxl-forge-api-automation-1)
