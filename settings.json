@@ -1,0 +1,37 @@
+{
+  "active_model_preset": "realvisxl50",
+  "model_presets": {
+    "realvisxl50": {
+      "model": "RealVisXL_V5.0_fp16",
+      "model_hash": "6a35a78557",
+      "base_params": {
+        "steps": 30,
+        "cfg_scale": 5.0,
+        "width": 1024,
+        "height": 1024,
+        "sampler_name": "DPM++ 2M",
+        "scheduler": "karras"
+      },
+      "prompt_prefix": "",
+      "negative_prefix": "(face asymmetry, eyes asymmetry, deformed eyes, open mouth)",
+      "sampler_locked": false,
+      "cfg_range": [
+        3.0,
+        8.0
+      ],
+      "license": "openrail++",
+      "commercial_use": "allowed"
+    }
+  },
+  "api": {
+    "url": "",
+    "sd_vae": "None"
+  },
+  "output": {
+    "dir": "~/sdxl_outputs"
+  },
+  "base_params": {
+    "seed": -1,
+    "batch_size": 1
+  }
+}
