@@ -3,7 +3,7 @@
 値は settings.json のプリセットが持ち、このファイルは「守らせる処理」だけを持つ。
 モデルを足すときに直すのは settings.json であって、このファイルではない。
 
-暗黙のフォールバックを作らない。縛りから外れた値は例外で止める。
+⛔ 暗黙のフォールバックを作らない。縛りから外れた値は例外で止める。
 """
 
 
@@ -61,6 +61,7 @@ def apply_negative(preset: dict, negative: str) -> str:
 def commercial_suffix(preset: dict) -> str:
     """商用不可のモデルなら画像のファイル名に付ける印を返す。
 
-    後から画像を見て「どのモデルで作ったか」が分かるようにする。
+    後から画像を見て「どのモデルで作ったか」が分かるようにする
+    。
     """
     return "_NC" if preset.get("commercial_use") == "prohibited" else ""

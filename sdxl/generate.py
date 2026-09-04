@@ -215,6 +215,55 @@ def save_image(image_bytes: bytes, settings: dict, seed: int, counter: int) -> s
     return path
 
 
+def generate_once(
+    settings: dict, prompt: str, negative: str,
+    *, do_warmup: bool = True, dry_run: bool = False,
+) -> list:
+    """関門4つ → 捨て生成 → 本番生成 → PNG照合 → 保存 を1回通す。
+
+    コマンド（main）と proxy.py の両方がこの関数を呼ぶ。
+    ⛔ proxy が Forge API を直接呼ぶ経路は作らない——関門と PNG 照合を
+       画面経路でも同じに通すため。
+
+    返り値: [{"path", "seed", "image_bytes", "info"}, ...]（dry_run のときは空リスト）
+    """
+    api_url = settings["api"]["url"].rstrip("/")
+    if not api_url:
+        raise GenerateError("api.url が空です（settings.json の api.url を設定してください）")
+
+    preset = settings["preset"]
+    base = settings["base_params"]
+
+    # 6-1 送信前の関門
+    title = check_model_exists(api_url, settings["api"]["model"])
+    check_sampler_exists(api_url, base["sampler_name"])
+    if base.get("scheduler"):
+        check_scheduler_exists(api_url, base["scheduler"])
+    model_rules.check_sampler(preset, base["sampler_name"])
+    model_rules.check_cfg(preset, base["cfg_scale"])
+    print(f"✅ 関門を通過（送信する checkpoint: {title}）")
+
+    if dry_run:
+        return []
+
+    if do_warmup:
+        warmup(api_url, title, settings["api"].get("sd_vae", "None"))
+
+    print("生成中...")
+    results = []
+    for counter, (image_bytes, seed) in enumerate(
+        generate(settings, title, prompt, negative), start=1
+    ):
+        info = verify_png(image_bytes, settings, seed)
+        path = save_image(image_bytes, settings, seed, counter)
+        print(f"✅ 保存: {path}")
+        print(f"   Model hash {info['Model hash']} / Size {info['Size']} / Seed {info['Seed']}")
+        results.append(
+            {"path": path, "seed": seed, "image_bytes": image_bytes, "info": info}
+        )
+    return results
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="SDXL 生成（ステップ1）")
     parser.add_argument("--url", help="Pod の proxy URL（settings.json を上書き）")
@@ -254,29 +303,12 @@ def main() -> int:
     print(f"保存先:     {settings['output']['dir']}")
     print()
 
-    # 6-1 送信前の3つの関門
-    title = check_model_exists(api_url, settings["api"]["model"])
-    check_sampler_exists(api_url, base["sampler_name"])
-    if base.get("scheduler"):
-        check_scheduler_exists(api_url, base["scheduler"])
-    model_rules.check_sampler(preset, base["sampler_name"])
-    model_rules.check_cfg(preset, base["cfg_scale"])
-    print(f"✅ 関門を通過（送信する checkpoint: {title}）")
-
+    generate_once(
+        settings, args.prompt, args.negative,
+        do_warmup=not args.no_warmup, dry_run=args.dry_run,
+    )
     if args.dry_run:
         print("--dry-run のため生成しません。")
-        return 0
-
-    if not args.no_warmup:
-        warmup(api_url, title, settings["api"].get("sd_vae", "None"))
-
-    print("生成中...")
-    results = generate(settings, title, args.prompt, args.negative)
-    for counter, (image_bytes, seed) in enumerate(results, start=1):
-        info = verify_png(image_bytes, settings, seed)
-        path = save_image(image_bytes, settings, seed, counter)
-        print(f"✅ 保存: {path}")
-        print(f"   Model hash {info['Model hash']} / Size {info['Size']} / Seed {info['Seed']}")
     return 0
 
 

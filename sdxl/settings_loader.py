@@ -1,9 +1,9 @@
 """settings.json の読み込みと検証。
 
-プリセットの必須キー（prompt_prefix / negative_prefix / sampler_locked /
-cfg_range / license / commercial_use）と model_hash を検証する。
+モデルプリセットの解決に、SDXL 用の6つのキー（prompt_prefix / negative_prefix / sampler_locked /
+cfg_range / license / commercial_use）と model_hash の検証を加えた。
 
-暗黙のフォールバックを作らない。不備は例外で止める。
+⛔ 暗黙のフォールバックを作らない。不備は例外で止める。
 """
 
 import copy
