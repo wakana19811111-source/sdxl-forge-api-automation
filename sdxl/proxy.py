@@ -1,10 +1,16 @@
-"""SDXL 用プロキシ（ステップ2：画面と Forge API の中継）。
+"""SDXL 用プロキシ（ステップ3：画面と Forge API の中継）。
 
 起動: python3 proxy.py
 ポート: 8767（他のプログラムと重ならない番号なら何でもよい）
 
 経路は POST /generate と OPTIONS（CORS）だけ。
-  GET /prompts はステップ3、GET /settings はステップ4で足す。
+  GET /prompts は作らない。画面の選択肢は build_html.py が
+    Markdownファイルから HTML へ直接書き出す一本にする。
+  GET /settings はステップ4で足す。
+
+POST /generate は「選んだ項目」（selections）と自由文（prompt）を受け取り、
+prompt_loader.build_prompt() で既定値＋選んだ項目＋自由文を組み立ててから
+generate_once() を呼ぶ。
 
 ⛔ この proxy は Forge API を直接呼ばない。生成は必ず generate.generate_once() を
    通す——送信前の関門と PNG 照合を、コマンド経路と画面経路で同じに通すため
@@ -18,6 +24,7 @@ import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import model_rules
+import prompt_loader
 from generate import GenerateError, generate_once
 from settings_loader import SettingsError, load_settings
 
@@ -54,13 +61,33 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self._json(400, {"error": "リクエストボディはJSONオブジェクトである必要があります。"})
             return
 
-        prompt = body.get("prompt")
-        if not isinstance(prompt, str) or not prompt.strip():
-            self._json(400, {"error": "プロンプトを入れてください"})
+        free_text = body.get("prompt", "")
+        if not isinstance(free_text, str):
+            self._json(400, {"error": "prompt は文字列で指定してください。"})
             return
-        negative = body.get("negative", "")
-        if not isinstance(negative, str):
-            self._json(400, {"error": "negative は文字列で指定してください。"})
+        selections = body.get("selections", {})
+        if not isinstance(selections, dict) or not all(
+            isinstance(k, str) and isinstance(v, str)
+            for k, v in selections.items()
+        ):
+            self._json(400, {"error": "selections は {見出し: 選択肢} の形で指定してください。"})
+            return
+
+        # 全プルダウン「指定なし」（＝値が空）＋自由文も空なら生成しない
+        if not free_text.strip() and not any(v.strip() for v in selections.values()):
+            self._json(400, {"error": "項目を選ぶか、プロンプトを入れてください"})
+            return
+
+        # Markdownファイル（プロンプトの正本）から既定値＋選んだ項目＋自由文を組み立てる
+        try:
+            items = prompt_loader.load_items()
+            prompt, negative = prompt_loader.build_prompt(items, selections, free_text)
+        except prompt_loader.StaleChoiceError as e:
+            print(f"  選択肢の不一致: {e}")
+            self._json(400, {"error": "HTMLが更新されていません。ブラウザを再読み込みしてください"})
+            return
+        except prompt_loader.PromptFileError as e:
+            self._json(500, {"error": str(e)})
             return
 
         try:
@@ -95,7 +122,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print("=== SDXL プロキシ起動（ステップ2） ===")
+    print("=== SDXL プロキシ起動（ステップ3） ===")
     print(f"ポート: {PORT}")
     print("経路: POST /generate")
     print("Ctrl+C で停止")

@@ -12,6 +12,12 @@
   }
   h1 { font-size: 20px; }
   .note { color: #666; font-size: 13px; }
+  .selector { margin-top: 10px; }
+  .selector label { display: inline-block; width: 5em; font-size: 14px; }
+  .pg-select {
+    font-size: 15px; padding: 6px; border: 1px solid #bbb; border-radius: 6px;
+    background: #fff; min-width: 60%;
+  }
   textarea {
     width: 100%; box-sizing: border-box; height: 96px;
     font-size: 15px; padding: 8px; border: 1px solid #bbb; border-radius: 6px;
@@ -29,9 +35,13 @@
 </style>
 </head>
 <body>
-<h1>統合プロンプトジェネレーター SDXL（ステップ2）</h1>
-<p class="note">プロンプトを入れて「生成」を押してください。negative はプリセットの negative_prefix が自動で付きます。</p>
-<textarea id="prompt" placeholder="japanese woman, portrait, natural light"></textarea>
+<h1>統合プロンプトジェネレーター SDXL（ステップ3）</h1>
+<div class="selector"><label>被写体</label><select class="pg-select" data-section="被写体"><option value="">指定なし</option><option>1girl, japanese, long hair</option><option>1girl, japanese, short hair</option><option>1girl, japanese, ponytail</option><option>mature female, japanese, long hair</option></select></div>
+<div class="selector"><label>表情</label><select class="pg-select" data-section="表情"><option value="">指定なし</option><option>(smiling:1.2)</option><option>(gentle smile:1.2)</option><option>(serious expression:1.2)</option><option>(laughing:1.2)</option></select></div>
+<div class="selector"><label>服</label><select class="pg-select" data-section="服"><option value="">指定なし</option><option>(red dress:1.8)</option><option>(blue dress:1.8)</option><option>(white shirt:1.8)</option><option>(black suit:1.8)</option></select></div>
+<div class="selector"><label>光</label><select class="pg-select" data-section="光"><option value="">指定なし</option><option>late afternoon golden light coming from behind her</option><option>soft window light falling on her face from the left</option><option>overcast daylight, even and diffuse light</option><option>warm golden hour sunlight on her face</option></select></div>
+<p class="note">項目を選ぶか、自由文プロンプトを入れて「生成」を押してください。既定値の prompt / negative（Markdownファイルの ## 既定値）は自動で付きます。</p>
+<textarea id="prompt" placeholder="自由文（例: sitting on a bench in a park）"></textarea>
 <br>
 <button id="gen-btn" onclick="runGenerate()">生成</button>
 <div id="status"></div>
@@ -53,6 +63,12 @@ async function runGenerate() {
   img.removeAttribute("src");
   meta.textContent = "";
 
+  // プルダウンで選んだ項目を集める（「指定なし」＝value が空のものは送らない）
+  const selections = {};
+  document.querySelectorAll(".pg-select").forEach((sel) => {
+    if (sel.value) selections[sel.dataset.section] = sel.value;
+  });
+
   // fetch にタイムアウトは付けない（初回はモデルのロードで数分かかるため）
   let res;
   try {
@@ -61,7 +77,7 @@ async function runGenerate() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt: document.getElementById("prompt").value,
-        negative: ""
+        selections: selections
       })
     });
   } catch (e) {

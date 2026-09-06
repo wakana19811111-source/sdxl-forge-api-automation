@@ -8,6 +8,7 @@ Stable Diffusion XL（SDXL）の画像生成を、WebUI Forge の画面を開か
 
 - [Stable Diffusion XLをAPIで動かす（1/11）](https://zenn.dev/triponte/articles/sdxl-forge-api-automation-1) — 4つのファイルと、送信前の4つの確認
 - [Stable Diffusion XLをAPIで動かす（2/11）](https://zenn.dev/triponte/articles/sdxl-forge-api-automation-2) — 画面を足しても、生成の入口は1つに保つ
+- [Stable Diffusion XLをAPIで動かす（3/11）](https://zenn.dev/triponte/articles/sdxl-forge-api-automation-3) — プロンプトの正本をMarkdownファイルに置く
 
 ## 進み具合
 
@@ -15,7 +16,8 @@ Stable Diffusion XL（SDXL）の画像生成を、WebUI Forge の画面を開か
 |---|---|---|
 | 1 | コマンド1本で1枚生成（送信前の実在確認つき） | ✅ 済み（タグ `step-1`） |
 | 2 | 画面から1枚生成（入力欄と生成ボタンだけ） | ✅ 済み（タグ `step-2`） |
-| 3〜11 | 項目の選択・モデル切り替え・複数枚・ControlNet・ADetailer・仕上げ | これから |
+| 3 | 画面で項目を選ぶ（Markdownファイル→HTML生成） | ✅ 済み（タグ `step-3`） |
+| 4〜11 | モデル切り替え・複数枚・ControlNet・ADetailer・仕上げ | これから |
 
 ステップが進むごとに、このリポジトリへコードを足していく。各ステップ時点の中身はタグで固定してある。
 
@@ -28,7 +30,9 @@ Stable Diffusion XL（SDXL）の画像生成を、WebUI Forge の画面を開か
 | `sdxl/model_rules.py` | モデルごとの作法を守らせる。サンプラーの縛り・CFGの範囲 |
 | `sdxl/generate.py` | 進行役。送信前の確認 → 生成 → PNGメタデータとの照合 → 保存 |
 | `sdxl/proxy.py` | 中継役。ブラウザからの依頼を受けて `generate_once()` を呼ぶ（ステップ2） |
-| `build_html.py` | 画面のHTMLを書き出す（ステップ2） |
+| `sdxl/prompt_loader.py` | プロンプトの正本を読み、選んだ項目からプロンプトを組み立てる（ステップ3） |
+| `prompts/` | プロンプトの正本（Markdownファイル）。画面の選択肢はここが出どころ |
+| `build_html.py` | 正本を読んで画面のHTMLを書き出す（ステップ2〜3） |
 | `html/` | `build_html.py` の生成物。ブラウザで開く画面 |
 
 ## 使い方
@@ -54,6 +58,8 @@ cd sdxl && python3 proxy.py    # 中継役を起動（localhost:8767）
 ```
 
 そのうえで `html/IntegratedPromptGenerator_SDXL.html` をブラウザで開く。`settings.json` の `api.url` に Pod の URL を入れてから使う。
+
+画面のプルダウンは `prompts/IntegratedPromptGenerator_SDXL.md` から作られる。選択肢を増やしたいときはこのMarkdownファイルに `- ` の行を足し、`python3 build_html.py` を打ち直す。`## 既定値` に書いた語は、どの生成にも必ず入る。
 
 ## 設計の考え方
 
